@@ -32,8 +32,8 @@
 <!-- Add where you want the grid -->
 <div id="plate"></div>
 
-<!-- 输出表格 -->
-<div style="margin-top: 2em; margin-bottom: 0.5em; font-weight: bold; font-size: 1.1em;">Output (9 x 13)</div>
+<!-- 输入表格 -->
+<div style="margin-top: 2em; margin-bottom: 0.5em; font-weight: bold; font-size: 1.1em;">Output (Max Lysis Rate)</div>
 <div id="output"></div>
 
 <script>
@@ -49,6 +49,7 @@
     licenseKey: 'non-commercial-and-evaluation',
     width: '100%',
     height: 600,
+    afterChange: updateOutputTable,
   });
 
   // 输出表格
@@ -62,4 +63,35 @@
     width: '100%',
     height: 300,
   });
+
+  // 根据Well ID映射到输出表格的行列
+  function wellIdToIndices(wellId) {
+    // Well ID 例如 "A1", "H12"
+    if (!wellId || typeof wellId !== 'string') return null;
+    const match = wellId.match(/^([A-Ha-h])(\d{1,2})$/);
+    if (!match) return null;
+    const row = match[1].toUpperCase().charCodeAt(0) - 65; // 0~7
+    const col = parseInt(match[2], 10) - 1; // 0~11
+    if (row < 0 || row > 7 || col < 0 || col > 11) return null;
+    return {row, col};
+  }
+
+  function updateOutputTable() {
+    // 清空输出表格
+    const outputData = Array.from({length: 8}, () => Array(12).fill(''));
+    const inputData = hot.getData();
+    for (let i = 0; i < inputData.length; i++) {
+      const row = inputData[i];
+      const wellId = row[0];
+      const indices = wellIdToIndices(wellId);
+      if (indices) {
+        // 取该行除Well ID外的最大值（忽略空值和非数字）
+        const values = row.slice(1).map(Number).filter(v => !isNaN(v));
+        if (values.length > 0) {
+          outputData[indices.row][indices.col] = Math.max(...values);
+        }
+      }
+    }
+    outputHot.loadData(outputData);
+  }
 </script>
