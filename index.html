@@ -19,72 +19,71 @@
         margin: 0;
       }
     </style>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@13.0.0/dist/handsontable.full.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/handsontable@13.0.0/dist/handsontable.full.min.js"></script>
   </head>
   <body>
-    <h1>🚧 Site under construction 🚧</h1>
+    <h1>🚧 Input & Output 🚧</h1>
     <div style="margin-bottom: 1em; font-weight: bold; font-size: 1.2em;">Data input (from 96-well plate)</div>
     <div id="plate"></div>
     <div style="margin-top: 2em; margin-bottom: 0.5em; font-weight: bold; font-size: 1.1em;">Output (Max Lysis Rate)</div>
     <div id="output"></div>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@13.0.0/dist/handsontable.full.min.css" />
-    <script src="https://cdn.jsdelivr.net/npm/handsontable@13.0.0/dist/handsontable.full.min.js"></script>
     <script>
-      const container = document.getElementById('plate');
-      const colHeaders = [
-        'Well ID',
-        ...Array.from({length: 30}, (_, i) => `${i+1} min`)
-      ];
-      const hot = new Handsontable(container, {
-        data: Array.from({length: 96}, () => Array(31).fill('')),
-        colHeaders: colHeaders,
-        rowHeaders: i => `R${i+1}`,
-        licenseKey: 'non-commercial-and-evaluation',
-        width: '100%',
-        height: 600,
-        afterChange: updateOutputTable,
-      });
+      window.onload = function() {
+        const container = document.getElementById('plate');
+        const colHeaders = [
+          'Well ID',
+          ...Array.from({length: 30}, (_, i) => `${i+1} min`)
+        ];
+        const hot = new Handsontable(container, {
+          data: Array.from({length: 96}, () => Array(31).fill('')),
+          colHeaders: colHeaders,
+          rowHeaders: i => `R${i+1}`,
+          licenseKey: 'non-commercial-and-evaluation',
+          width: '100%',
+          height: 600,
+          afterChange: updateOutputTable,
+        });
 
-      // 输出表格
-      const outputContainer = document.getElementById('output');
-      const outputHot = new Handsontable(outputContainer, {
-        data: Array.from({length: 8}, () => Array(12).fill('')),
-        colHeaders: Array.from({length: 12}, (_, i) => i+1),
-        rowHeaders: i => String.fromCharCode(65 + i), // A~H
-        readOnly: true,
-        licenseKey: 'non-commercial-and-evaluation',
-        width: '100%',
-        height: 300,
-      });
+        // 输出表格
+        const outputContainer = document.getElementById('output');
+        const outputHot = new Handsontable(outputContainer, {
+          data: Array.from({length: 8}, () => Array(12).fill('')),
+          colHeaders: Array.from({length: 12}, (_, i) => i+1),
+          rowHeaders: i => String.fromCharCode(65 + i), // A~H
+          readOnly: true,
+          licenseKey: 'non-commercial-and-evaluation',
+          width: '100%',
+          height: 300,
+        });
 
-      // 根据Well ID映射到输出表格的行列
-      function wellIdToIndices(wellId) {
-        // Well ID 例如 "A1", "H12"
-        if (!wellId || typeof wellId !== 'string') return null;
-        const match = wellId.match(/^([A-Ha-h])(\d{1,2})$/);
-        if (!match) return null;
-        const row = match[1].toUpperCase().charCodeAt(0) - 65; // 0~7
-        const col = parseInt(match[2], 10) - 1; // 0~11
-        if (row < 0 || row > 7 || col < 0 || col > 11) return null;
-        return {row, col};
-      }
+        // 根据Well ID映射到输出表格的行列
+        function wellIdToIndices(wellId) {
+          if (!wellId || typeof wellId !== 'string') return null;
+          const match = wellId.match(/^([A-Ha-h])(\d{1,2})$/);
+          if (!match) return null;
+          const row = match[1].toUpperCase().charCodeAt(0) - 65; // 0~7
+          const col = parseInt(match[2], 10) - 1; // 0~11
+          if (row < 0 || row > 7 || col < 0 || col > 11) return null;
+          return {row, col};
+        }
 
-      function updateOutputTable() {
-        // 清空输出表格
-        const outputData = Array.from({length: 8}, () => Array(12).fill(''));
-        const inputData = hot.getData();
-        for (let i = 0; i < inputData.length; i++) {
-          const row = inputData[i];
-          const wellId = row[0];
-          const indices = wellIdToIndices(wellId);
-          if (indices) {
-            // 取该行除Well ID外的最大值（忽略空值和非数字）
-            const values = row.slice(1).map(Number).filter(v => !isNaN(v));
-            if (values.length > 0) {
-              outputData[indices.row][indices.col] = Math.max(...values);
+        function updateOutputTable() {
+          const outputData = Array.from({length: 8}, () => Array(12).fill(''));
+          const inputData = hot.getData();
+          for (let i = 0; i < inputData.length; i++) {
+            const row = inputData[i];
+            const wellId = row[0];
+            const indices = wellIdToIndices(wellId);
+            if (indices) {
+              const values = row.slice(1).map(Number).filter(v => !isNaN(v));
+              if (values.length > 0) {
+                outputData[indices.row][indices.col] = Math.max(...values);
+              }
             }
           }
+          outputHot.loadData(outputData);
         }
-        outputHot.loadData(outputData);
       }
     </script>
   </body>
