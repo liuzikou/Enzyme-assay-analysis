@@ -26,6 +26,7 @@
     <h1>🚧 Input & Output 🚧</h1>
     <div style="margin-bottom: 1em; font-weight: bold; font-size: 1.2em;">Data input (from 96-well plate)</div>
     <div id="plate"></div>
+    <button id="calc-btn" style="margin: 1em 0; padding: 0.5em 1.5em; font-size: 1em; font-weight: bold;">Calculate MLR</button>
     <div style="margin-top: 2em; margin-bottom: 0.5em; font-weight: bold; font-size: 1.1em;">Output (Max Lysis Rate)</div>
     <div id="output"></div>
     <script>
@@ -42,7 +43,7 @@
           licenseKey: 'non-commercial-and-evaluation',
           width: '100%',
           height: 600,
-          afterChange: updateOutputTable,
+          // afterChange: updateOutputTable, // 移除自动更新
         });
 
         // 输出表格
@@ -56,6 +57,9 @@
           width: '100%',
           height: 300,
         });
+
+        // 绑定按钮事件
+        document.getElementById('calc-btn').onclick = updateOutputTable;
 
         // 根据Well ID映射到输出表格的行列
         function wellIdToIndices(wellId) {
