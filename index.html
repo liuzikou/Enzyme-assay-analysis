@@ -22,7 +22,7 @@
   </head>
   <body>
     <h1>🚧 Site under construction 🚧</h1>
-    <div style="margin-bottom: 1em; font-weight: bold; font-size: 1.2em;">Data input</div>
+    <div style="margin-bottom: 1em; font-weight: bold; font-size: 1.2em;">Data input (from 96-well plate)</div>
   </body>
 </html>
 <!-- Add to <head> -->
@@ -32,11 +32,15 @@
 <!-- Add where you want the grid -->
 <div id="plate"></div>
 
+<!-- 输出表格 -->
+<div style="margin-top: 2em; margin-bottom: 0.5em; font-weight: bold; font-size: 1.1em;">Output (9 x 13)</div>
+<div id="output"></div>
+
 <script>
   const container = document.getElementById('plate');
   const colHeaders = [
     'Well ID',
-    ...Array.from({length: 30}, (_, i) => `Time (min) ${i+1}`)
+    ...Array.from({length: 30}, (_, i) => `${i+1} min`)
   ];
   const hot = new Handsontable(container, {
     data: Array.from({length: 96}, () => Array(31).fill('')),
@@ -45,5 +49,17 @@
     licenseKey: 'non-commercial-and-evaluation',
     width: '100%',
     height: 600,
+  });
+
+  // 输出表格
+  const outputContainer = document.getElementById('output');
+  const outputHot = new Handsontable(outputContainer, {
+    data: Array.from({length: 8}, () => Array(12).fill('')),
+    colHeaders: Array.from({length: 12}, (_, i) => i+1),
+    rowHeaders: i => String.fromCharCode(65 + i), // A~H
+    readOnly: true,
+    licenseKey: 'non-commercial-and-evaluation',
+    width: '100%',
+    height: 300,
   });
 </script>
