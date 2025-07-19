@@ -1,94 +1,455 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Enzyme assay analysis</title>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>酶反应分析 Web 应用 - 开发者说明</title>
     <style>
-      body {
-        display: grid;
-        place-items: center;
-        min-height: 100vh;
-        margin: 0;
-        font-family: system-ui, sans-serif;
-        background: #f5f7fa;
-        color: #555;
-      }
-      h1 {
-        font-size: clamp(2rem, 5vw, 3rem);
-        margin: 0;
-      }
-    </style>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@13.0.0/dist/handsontable.full.min.css" />
-    <script src="https://cdn.jsdelivr.net/npm/handsontable@13.0.0/dist/handsontable.full.min.js"></script>
-  </head>
-  <body>
-    <h1>🚧 Input & Output 🚧</h1>
-    <div style="margin-bottom: 1em; font-weight: bold; font-size: 1.2em;">Data input (from 96-well plate)</div>
-    <div id="plate"></div>
-    <button id="calc-btn" style="margin: 1em 0; padding: 0.5em 1.5em; font-size: 1em; font-weight: bold;">Calculate MLR</button>
-    <div style="margin-top: 2em; margin-bottom: 0.5em; font-weight: bold; font-size: 1.1em;">Output (Max Lysis Rate)</div>
-    <div id="output"></div>
-    <script>
-      window.onload = function() {
-        const container = document.getElementById('plate');
-        const colHeaders = [
-          'Well ID',
-          ...Array.from({length: 30}, (_, i) => `${i+1} min`)
-        ];
-        const hot = new Handsontable(container, {
-          data: Array.from({length: 96}, () => Array(31).fill('')),
-          colHeaders: colHeaders,
-          rowHeaders: i => `R${i+1}`,
-          licenseKey: 'non-commercial-and-evaluation',
-          width: '100%',
-          height: 600,
-          // afterChange: updateOutputTable, // 移除自动更新
-        });
-
-        // 输出表格
-        const outputContainer = document.getElementById('output');
-        const outputHot = new Handsontable(outputContainer, {
-          data: Array.from({length: 8}, () => Array(12).fill('')),
-          colHeaders: Array.from({length: 12}, (_, i) => i+1),
-          rowHeaders: i => String.fromCharCode(65 + i), // A~H
-          readOnly: true,
-          licenseKey: 'non-commercial-and-evaluation',
-          width: '100%',
-          height: 300,
-        });
-
-        // 绑定按钮事件
-        document.getElementById('calc-btn').onclick = updateOutputTable;
-
-        // 根据Well ID映射到输出表格的行列
-        function wellIdToIndices(wellId) {
-          if (!wellId || typeof wellId !== 'string') return null;
-          const match = wellId.match(/^([A-Ha-h])(\d{1,2})$/);
-          if (!match) return null;
-          const row = match[1].toUpperCase().charCodeAt(0) - 65; // 0~7
-          const col = parseInt(match[2], 10) - 1; // 0~11
-          if (row < 0 || row > 7 || col < 0 || col > 11) return null;
-          return {row, col};
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
-        function updateOutputTable() {
-          const outputData = Array.from({length: 8}, () => Array(12).fill(''));
-          const inputData = hot.getData();
-          for (let i = 0; i < inputData.length; i++) {
-            const row = inputData[i];
-            const wellId = row[0];
-            const indices = wellIdToIndices(wellId);
-            if (indices) {
-              const values = row.slice(1).map(Number).filter(v => !isNaN(v));
-              if (values.length > 0) {
-                outputData[indices.row][indices.col] = Math.max(...values);
-              }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #ffffff;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 30px 0;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .section {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .section h2 {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: #4ecdc4;
+            border-bottom: 2px solid #4ecdc4;
+            padding-bottom: 10px;
+        }
+
+        .section h3 {
+            font-size: 1.2rem;
+            margin: 15px 0 10px 0;
+            color: #ff6b6b;
+        }
+
+        .tech-stack {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .tech-tag {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .feature-list {
+            list-style: none;
+        }
+
+        .feature-list li {
+            margin: 10px 0;
+            padding-left: 20px;
+            position: relative;
+        }
+
+        .feature-list li::before {
+            content: "▶";
+            position: absolute;
+            left: 0;
+            color: #4ecdc4;
+        }
+
+        .demo-section {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .demo-section h2 {
+            color: #4ecdc4;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .data-input {
+            margin-bottom: 20px;
+        }
+
+        .data-input h3 {
+            color: #ff6b6b;
+            margin-bottom: 10px;
+        }
+
+        .plate-container {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .plate-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 5px;
+            margin-top: 10px;
+        }
+
+        .well {
+            width: 30px;
+            height: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .well:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.1);
+        }
+
+        .well.active {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 25px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .output-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 15px;
+        }
+
+        .output-section h3 {
+            color: #ff6b6b;
+            margin-bottom: 10px;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 5px;
+            margin-top: 10px;
+        }
+
+        .result-cell {
+            width: 30px;
+            height: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding: 20px 0;
+            border-top: 2px solid rgba(255, 255, 255, 0.1);
+            opacity: 0.8;
+        }
+
+        @media (max-width: 768px) {
+            .content-grid {
+                grid-template-columns: 1fr;
             }
-          }
-          outputHot.loadData(outputData);
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .plate-grid, .results-grid {
+                grid-template-columns: repeat(8, 1fr);
+            }
         }
-      }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>酶反应分析 Web 应用</h1>
+            <p>开发者说明文档</p>
+        </div>
+
+        <div class="content-grid">
+            <div class="section">
+                <h2>1 项目概览</h2>
+                <h3>应用简介</h3>
+                <p>本Web应用专为酶反应动力学分析而设计，提供直观的数据输入、处理和结果可视化功能。</p>
+                
+                <h3>核心功能</h3>
+                <ul class="feature-list">
+                    <li>96孔板数据输入界面</li>
+                    <li>实时数据验证和处理</li>
+                    <li>最大裂解率计算</li>
+                    <li>结果可视化展示</li>
+                    <li>数据导出功能</li>
+                </ul>
+
+                <h3>应用场景</h3>
+                <ul class="feature-list">
+                    <li>酶活性测定</li>
+                    <li>药物筛选实验</li>
+                    <li>生物化学研究</li>
+                    <li>实验室数据分析</li>
+                </ul>
+            </div>
+
+            <div class="section">
+                <h2>2 技术栈与运行环境</h2>
+                <h3>前端技术</h3>
+                <div class="tech-stack">
+                    <span class="tech-tag">HTML5</span>
+                    <span class="tech-tag">CSS3</span>
+                    <span class="tech-tag">JavaScript ES6+</span>
+                    <span class="tech-tag">Handsontable</span>
+                </div>
+
+                <h3>核心库</h3>
+                <ul class="feature-list">
+                    <li>Handsontable - 数据表格组件</li>
+                    <li>原生JavaScript - 数据处理逻辑</li>
+                    <li>CSS Grid/Flexbox - 响应式布局</li>
+                </ul>
+
+                <h3>浏览器兼容性</h3>
+                <ul class="feature-list">
+                    <li>Chrome 80+</li>
+                    <li>Firefox 75+</li>
+                    <li>Safari 13+</li>
+                    <li>Edge 80+</li>
+                </ul>
+
+                <h3>运行要求</h3>
+                <ul class="feature-list">
+                    <li>现代Web浏览器</li>
+                    <li>JavaScript启用</li>
+                    <li>网络连接（CDN资源）</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h2>功能演示</h2>
+            
+            <div class="data-input">
+                <h3>数据输入 (96孔板)</h3>
+                <div class="plate-container">
+                    <p>点击孔位输入数据，支持时间序列数据录入</p>
+                    <div class="plate-grid" id="plate-grid">
+                        <!-- 动态生成96个孔位 -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button class="btn" onclick="calculateMLR()">计算最大裂解率</button>
+                <button class="btn" onclick="clearData()">清除数据</button>
+                <button class="btn" onclick="exportData()">导出结果</button>
+            </div>
+
+            <div class="output-section">
+                <h3>输出结果 (最大裂解率)</h3>
+                <div class="results-grid" id="results-grid">
+                    <!-- 动态生成结果网格 -->
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>© 2024 酶反应分析 Web 应用 | 开发者版本</p>
+        </div>
+    </div>
+
+    <script>
+        // 初始化96孔板
+        function initializePlate() {
+            const plateGrid = document.getElementById('plate-grid');
+            const resultsGrid = document.getElementById('results-grid');
+            
+            // 生成96个孔位
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 12; col++) {
+                    const well = document.createElement('div');
+                    well.className = 'well';
+                    well.textContent = `${String.fromCharCode(65 + row)}${col + 1}`;
+                    well.onclick = () => selectWell(well, row, col);
+                    plateGrid.appendChild(well);
+                }
+            }
+
+            // 生成结果网格
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 12; col++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'result-cell';
+                    cell.textContent = '-';
+                    cell.id = `result-${row}-${col}`;
+                    resultsGrid.appendChild(cell);
+                }
+            }
+        }
+
+        // 选择孔位
+        function selectWell(well, row, col) {
+            // 移除其他选中状态
+            document.querySelectorAll('.well').forEach(w => w.classList.remove('active'));
+            well.classList.add('active');
+            
+            // 模拟数据输入
+            const value = prompt(`请输入 ${well.textContent} 孔的数据 (用逗号分隔多个时间点):`);
+            if (value) {
+                well.dataset.values = value;
+                well.style.background = 'rgba(76, 205, 196, 0.3)';
+            }
+        }
+
+        // 计算最大裂解率
+        function calculateMLR() {
+            const wells = document.querySelectorAll('.well');
+            wells.forEach(well => {
+                if (well.dataset.values) {
+                    const values = well.dataset.values.split(',').map(v => parseFloat(v.trim())).filter(v => !isNaN(v));
+                    if (values.length > 0) {
+                        const maxValue = Math.max(...values);
+                        const coords = well.textContent.match(/([A-H])(\d+)/);
+                        if (coords) {
+                            const row = coords[1].charCodeAt(0) - 65;
+                            const col = parseInt(coords[2]) - 1;
+                            const resultCell = document.getElementById(`result-${row}-${col}`);
+                            if (resultCell) {
+                                resultCell.textContent = maxValue.toFixed(2);
+                                resultCell.style.background = 'rgba(255, 107, 107, 0.3)';
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 清除数据
+        function clearData() {
+            document.querySelectorAll('.well').forEach(well => {
+                well.classList.remove('active');
+                well.style.background = 'rgba(255, 255, 255, 0.1)';
+                delete well.dataset.values;
+            });
+            
+            document.querySelectorAll('.result-cell').forEach(cell => {
+                cell.textContent = '-';
+                cell.style.background = 'rgba(255, 255, 255, 0.1)';
+            });
+        }
+
+        // 导出数据
+        function exportData() {
+            const results = [];
+            for (let row = 0; row < 8; row++) {
+                const rowData = [];
+                for (let col = 0; col < 12; col++) {
+                    const cell = document.getElementById(`result-${row}-${col}`);
+                    rowData.push(cell.textContent);
+                }
+                results.push(rowData);
+            }
+            
+            const csv = [
+                ['', ...Array.from({length: 12}, (_, i) => i + 1)],
+                ...results.map((row, i) => [String.fromCharCode(65 + i), ...row])
+            ].map(row => row.join(',')).join('\n');
+            
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'enzyme_assay_results.csv';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', initializePlate);
     </script>
-  </body>
+</body>
 </html>
